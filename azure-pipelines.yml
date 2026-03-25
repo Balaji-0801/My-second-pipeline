@@ -34,8 +34,8 @@ steps:
       $apiUrl = "https://srv01vra1.corp.trumpf.com/catalog/api/consumer/entitledCatalogItems/209bd02e-d7d1-4ea2-ad0e-ba215ce60a9e/requests"
 
       # VMware Aria credentials
-      $username = "sundaramba"
-      $password = "Domain@54321Service@54321"
+      $username = "XXXXXXXXXXXXXXXXXXXXXXXXXXX"
+      $password = "XXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
       # Combine username and password safely
       $pair = "$($username):$($password)"
