@@ -24,20 +24,30 @@ steps:
   inputs:
     targetType: 'inline'
     script: |
+      # VM name with timestamp
       $vmName = "CI-CD-Win11-$(Get-Date -Format yyyyMMddHHmmss)"
+
+      # Template ID from VMware Aria
       $vmTemplateId = "209bd02e-d7d1-4ea2-ad0e-ba215ce60a9e"
+
+      # API URL
       $apiUrl = "https://srv01vra1.corp.trumpf.com/catalog/api/consumer/entitledCatalogItems/209bd02e-d7d1-4ea2-ad0e-ba215ce60a9e/requests"
+
+      # VMware Aria credentials
       $username = "sundaramba"
       $password = "Domain@54321Service@54321"
 
-      $pair = "$username:$password"
+      # Combine username and password safely
+      $pair = "$($username):$($password)"
       $encodedCreds = [Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($pair))
 
+      # HTTP headers
       $headers = @{
           "Authorization" = "Basic $encodedCreds"
           "Content-Type" = "application/json"
       }
 
+      # JSON body to request VM
       $body = @{
           "requestData" = @{
               "name" = $vmName
@@ -49,5 +59,6 @@ steps:
           }
       } | ConvertTo-Json -Depth 10
 
+      # Invoke the VMware Aria API
       Invoke-RestMethod -Uri $apiUrl -Method Post -Headers $headers -Body $body
       Write-Output "Windows 11 VM $vmName creation request sent!"
