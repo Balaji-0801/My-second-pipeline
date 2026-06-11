@@ -1,46 +1,82 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'windows-latest'
+
+steps:
+
+- checkout: self
+
 - task: PowerShell@2
   displayName: 'Test VMware Aria Connectivity'
   inputs:
     targetType: 'inline'
     script: |
+
+      Write-Host "================================="
+      Write-Host "Agent Information"
+      Write-Host "================================="
+
       Write-Host "Agent Name: $env:AGENT_NAME"
       Write-Host "Machine Name: $env:COMPUTERNAME"
 
-      Write-Host "==============================="
-      Write-Host "Testing DNS Resolution"
-      Write-Host "==============================="
+      Write-Host ""
+      Write-Host "================================="
+      Write-Host "DNS Resolution Test"
+      Write-Host "================================="
 
       try {
           nslookup srv01vra1.corp.trumpf.com
       }
       catch {
           Write-Host "DNS lookup failed"
+          Write-Host $_.Exception.Message
       }
 
-      Write-Host "==============================="
-      Write-Host "Testing HTTPS Connectivity"
-      Write-Host "==============================="
+      Write-Host ""
+      Write-Host "================================="
+      Write-Host "Network Connectivity Test"
+      Write-Host "================================="
 
       try {
           Test-NetConnection srv01vra1.corp.trumpf.com -Port 443
       }
       catch {
-          Write-Host "Connection test failed"
+          Write-Host "Network test failed"
+          Write-Host $_.Exception.Message
       }
 
-      Write-Host "==============================="
-      Write-Host "Testing Web Request"
-      Write-Host "==============================="
+      Write-Host ""
+      Write-Host "================================="
+      Write-Host "HTTPS Connectivity Test"
+      Write-Host "================================="
 
       try {
-          Invoke-WebRequest `
+          $response = Invoke-WebRequest `
             -Uri "https://srv01vra1.corp.trumpf.com" `
             -UseBasicParsing `
             -TimeoutSec 30
 
-          Write-Host "VMware Aria URL reachable"
+          Write-Host "Status Code: $($response.StatusCode)"
       }
       catch {
-          Write-Host "ERROR:"
+          Write-Host "HTTPS connection failed"
           Write-Host $_.Exception.Message
       }
+
+      Write-Host ""
+      Write-Host "================================="
+      Write-Host "DNS Resolution using .NET"
+      Write-Host "================================="
+
+      try {
+          [System.Net.Dns]::GetHostAddresses("srv01vra1.corp.trumpf.com")
+      }
+      catch {
+          Write-Host "DNS resolution failed"
+          Write-Host $_.Exception.Message
+      }
+
+      Write-Host ""
+      Write-Host "Connectivity test completed"
