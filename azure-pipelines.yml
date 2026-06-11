@@ -1,64 +1,46 @@
-trigger:
-- main
-
-pool:
-  vmImage: 'windows-latest'
-
-steps:
-- checkout: self
-
-# Step 1: Install Node.js
-- task: NodeTool@0
-  inputs:
-    versionSpec: '20.x'
-  displayName: 'Install Node.js'
-
-# Step 2: Run Node.js apps locally (use full path)
-- script: |
-    node "$(Build.SourcesDirectory)\app.js"
-    node "$(Build.SourcesDirectory)\app1.js"
-  displayName: 'Run Node.js apps locally'
-
-# Step 3: Create Windows 11 VM in VMware Aria
 - task: PowerShell@2
+  displayName: 'Test VMware Aria Connectivity'
   inputs:
     targetType: 'inline'
     script: |
-      # VM name with timestamp
-      $vmName = "CI-CD-Win11-$(Get-Date -Format yyyyMMddHHmmss)"
+      Write-Host "Agent Name: $env:AGENT_NAME"
+      Write-Host "Machine Name: $env:COMPUTERNAME"
 
-      # Template ID from VMware Aria
-      $vmTemplateId = "209bd02e-d7d1-4ea2-ad0e-ba215ce60a9e"
+      Write-Host "==============================="
+      Write-Host "Testing DNS Resolution"
+      Write-Host "==============================="
 
-      # API URL
-      $apiUrl = "https://srv01vra1.corp.trumpf.com/catalog/api/consumer/entitledCatalogItems/209bd02e-d7d1-4ea2-ad0e-ba215ce60a9e/requests"
-
-      # VMware Aria credentials
-      $username = "sundaramba"
-      $password = "Domain@54321Service@54321"
-
-      # Combine username and password safely
-      $pair = "$($username):$($password)"
-      $encodedCreds = [Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($pair))
-
-      # HTTP headers
-      $headers = @{
-          "Authorization" = "Basic $encodedCreds"
-          "Content-Type" = "application/json"
+      try {
+          nslookup srv01vra1.corp.trumpf.com
+      }
+      catch {
+          Write-Host "DNS lookup failed"
       }
 
-      # JSON body to request VM
-      $body = @{
-          "requestData" = @{
-              "name" = $vmName
-              "parameters" = @{
-                  "CPU" = "2"
-                  "Memory" = "8GB"
-                  "OS" = "Windows-11"
-              }
-          }
-      } | ConvertTo-Json -Depth 10
+      Write-Host "==============================="
+      Write-Host "Testing HTTPS Connectivity"
+      Write-Host "==============================="
 
-      # Invoke the VMware Aria API
-      Invoke-RestMethod -Uri $apiUrl -Method Post -Headers $headers -Body $body
-      Write-Output "Windows 11 VM $vmName creation request sent!"
+      try {
+          Test-NetConnection srv01vra1.corp.trumpf.com -Port 443
+      }
+      catch {
+          Write-Host "Connection test failed"
+      }
+
+      Write-Host "==============================="
+      Write-Host "Testing Web Request"
+      Write-Host "==============================="
+
+      try {
+          Invoke-WebRequest `
+            -Uri "https://srv01vra1.corp.trumpf.com" `
+            -UseBasicParsing `
+            -TimeoutSec 30
+
+          Write-Host "VMware Aria URL reachable"
+      }
+      catch {
+          Write-Host "ERROR:"
+          Write-Host $_.Exception.Message
+      }
