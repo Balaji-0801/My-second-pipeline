@@ -8,75 +8,59 @@ steps:
 
 - checkout: self
 
+# Step 1: Install Node.js
+- task: NodeTool@0
+  inputs:
+    versionSpec: '20.x'
+  displayName: 'Install Node.js'
+
+# Step 2: Run Node.js apps locally
+- script: |
+    node "$(Build.SourcesDirectory)\app.js"
+    node "$(Build.SourcesDirectory)\app1.js"
+  displayName: 'Run Node.js apps locally'
+
+# Step 3: Create Windows 11 VM in VMware Aria
 - task: PowerShell@2
-  displayName: 'Test VMware Aria Connectivity'
+  displayName: 'Create VMware Aria VM'
   inputs:
     targetType: 'inline'
     script: |
 
-      Write-Host "================================="
-      Write-Host "Agent Information"
-      Write-Host "================================="
+      $vmName = "CI-CD-Win11-$(Get-Date -Format yyyyMMddHHmmss)"
 
-      Write-Host "Agent Name: $env:AGENT_NAME"
-      Write-Host "Machine Name: $env:COMPUTERNAME"
+      $vmTemplateId = "209bd02e-d7d1-4ea2-ad0e-ba215ce60a9e"
 
-      Write-Host ""
-      Write-Host "================================="
-      Write-Host "DNS Resolution Test"
-      Write-Host "================================="
+      $apiUrl = "https://srv01vra1.corp.trumpf.com/catalog/api/consumer/entitledCatalogItems/209bd02e-d7d1-4ea2-ad0e-ba215ce60a9e/requests"
 
-      try {
-          nslookup srv01vra1.corp.trumpf.com
-      }
-      catch {
-          Write-Host "DNS lookup failed"
-          Write-Host $_.Exception.Message
-      }
+      $username = "sundaramba"
+      $password = "$(ARIA_PASSWORD)"
 
-      Write-Host ""
-      Write-Host "================================="
-      Write-Host "Network Connectivity Test"
-      Write-Host "================================="
+      $pair = "$($username):$($password)"
+      $encodedCreds = [Convert]::ToBase64String(
+        [System.Text.Encoding]::ASCII.GetBytes($pair)
+      )
 
-      try {
-          Test-NetConnection srv01vra1.corp.trumpf.com -Port 443
-      }
-      catch {
-          Write-Host "Network test failed"
-          Write-Host $_.Exception.Message
+      $headers = @{
+          Authorization = "Basic $encodedCreds"
+          "Content-Type" = "application/json"
       }
 
-      Write-Host ""
-      Write-Host "================================="
-      Write-Host "HTTPS Connectivity Test"
-      Write-Host "================================="
+      $body = @{
+          requestData = @{
+              name = $vmName
+              parameters = @{
+                  CPU    = "2"
+                  Memory = "8GB"
+                  OS     = "Windows-11"
+              }
+          }
+      } | ConvertTo-Json -Depth 10
 
-      try {
-          $response = Invoke-WebRequest `
-            -Uri "https://srv01vra1.corp.trumpf.com" `
-            -UseBasicParsing `
-            -TimeoutSec 30
+      Invoke-RestMethod `
+        -Uri $apiUrl `
+        -Method Post `
+        -Headers $headers `
+        -Body $body
 
-          Write-Host "Status Code: $($response.StatusCode)"
-      }
-      catch {
-          Write-Host "HTTPS connection failed"
-          Write-Host $_.Exception.Message
-      }
-
-      Write-Host ""
-      Write-Host "================================="
-      Write-Host "DNS Resolution using .NET"
-      Write-Host "================================="
-
-      try {
-          [System.Net.Dns]::GetHostAddresses("srv01vra1.corp.trumpf.com")
-      }
-      catch {
-          Write-Host "DNS resolution failed"
-          Write-Host $_.Exception.Message
-      }
-
-      Write-Host ""
-      Write-Host "Connectivity test completed"
+      Write-Host "Windows 11 VM $vmName creation request sent!"
